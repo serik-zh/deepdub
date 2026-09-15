@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deepdub — Ассистент K</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#faf7f6; --surface:#ffffff; --ink:#1b1a1f; --muted:#716e7c; --line:#ece5e6;
+  --pink:#ee3d8f; --pink-deep:#d92a7e; --pink-soft:#fdeef5;
+  --lav:#7f76cf; --lav-bg:#ece8f8;
+  --tint-yellow:#fdf8ea; --tint-green:#edf7f0; --tint-blue:#eef3fb;
+  --good:#249e6b; --warn:#d78f2c; --bad:#d84f5e; --neutral:#8b8894;
+  --shadow:0 10px 30px rgba(60,20,50,.07);
+  --r-lg:22px; --r-md:14px; --r-pill:999px;
+}
+:root:not([data-theme="light"]){}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#161318; --surface:#1f1b22; --ink:#f1edf3; --muted:#a29daf; --line:#2d2733;
+    --pink-soft:rgba(238,61,143,.14); --lav-bg:rgba(127,118,207,.18);
+    --tint-yellow:rgba(215,143,44,.10); --tint-green:rgba(36,158,107,.10); --tint-blue:rgba(90,130,220,.10);
+    --shadow:0 10px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161318; --surface:#1f1b22; --ink:#f1edf3; --muted:#a29daf; --line:#2d2733;
+  --pink-soft:rgba(238,61,143,.14); --lav-bg:rgba(127,118,207,.18);
+  --tint-yellow:rgba(215,143,44,.10); --tint-green:rgba(36,158,107,.10); --tint-blue:rgba(90,130,220,.10);
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:'Manrope',-apple-system,'Segoe UI',Roboto,Arial,sans-serif;font-size:15px;line-height:1.5;}
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+/* ---------- sidebar ---------- */
+aside{background:var(--surface);border-right:1px solid var(--line);padding:22px 14px 16px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:20px;letter-spacing:-.02em;padding:0 10px 6px}
+.logo .dd{color:var(--pink);font-size:22px}
+.crumb{font-size:12.5px;color:var(--muted);padding:0 10px 14px;border-bottom:1px solid var(--line);margin-bottom:12px}
+.crumb b{color:var(--ink)}
+.navlabel{font-size:11.5px;font-weight:700;letter-spacing:.08em;color:var(--lav);padding:14px 10px 6px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:0;background:transparent;color:var(--ink);font:inherit;font-weight:600;padding:9px 12px;border-radius:12px;cursor:pointer}
+.nav button:hover{background:var(--lav-bg)}
+.nav button.active{background:var(--lav-bg)}
+.nav button:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
+.nav .ic{width:18px;text-align:center;opacity:.75}
+.userchip{margin-top:auto;display:flex;align-items:center;gap:10px;padding:12px 10px;border-top:1px solid var(--line)}
+.avatar{width:36px;height:36px;border-radius:12px;background:var(--lav-bg);color:var(--lav);font-weight:800;display:flex;align-items:center;justify-content:center}
+.userchip .un{font-weight:700;font-size:14px}
+.userchip .ur{font-size:12px;color:var(--muted)}
+/* ---------- topbar ---------- */
+.topbar{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:22px 32px 18px;border-bottom:1px solid var(--line);background:var(--bg);position:sticky;top:0;z-index:5}
+.topbar h1{font-size:21px;font-weight:800;letter-spacing:-.02em}
+.topbar .sub{font-size:13.5px;color:var(--muted)}
+.actions{display:flex;gap:10px;flex-shrink:0}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit;font-weight:700;font-size:14px;padding:10px 20px;border-radius:var(--r-pill);cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--pink);border-color:var(--pink);color:#fff;box-shadow:0 6px 18px rgba(238,61,143,.35)}
+.btn.primary:hover{background:var(--pink-deep)}
+.btn:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
+/* ---------- layout ---------- */
+main{min-width:0}
+.page{display:none;padding:28px 32px 48px}
+.page.visible{display:block}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:28px;align-items:start}
+.rail .railcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px 22px;margin-bottom:16px;box-shadow:var(--shadow)}
+.rail h3{font-size:16px;font-weight:800;margin-bottom:8px}
+.rail p{font-size:13.5px;color:var(--muted)}
+.rail .kv{display:flex;justify-content:space-between;font-size:13.5px;padding:7px 0;border-bottom:1px dashed var(--line)}
+.rail .kv:last-child{border-bottom:0}
+.rail .kv b{font-weight:700}
+/* hero */
+.eyebrow{display:inline-flex;align-items:center;gap:8px;color:var(--pink);font-weight:700;font-size:14px;margin-bottom:14px}
+.eyebrow .dot{width:9px;height:9px;border-radius:50%;background:var(--pink);box-shadow:0 0 0 5px var(--pink-soft)}
+.hero{font-size:clamp(34px,4.6vw,56px);line-height:1.04;font-weight:800;letter-spacing:-.035em;margin-bottom:18px}
+.hero .grad{background:linear-gradient(100deg,var(--pink) 10%,#a44fd0 90%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{font-size:16.5px;color:var(--muted);max-width:56ch;margin-bottom:26px}
+/* stat row */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:6px 0 26px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px}
+.stat .lab{font-size:12.5px;color:var(--muted);font-weight:700}
+.stat .val{font-size:30px;font-weight:800;letter-spacing:-.02em;margin:2px 0}
+.stat .note{font-size:12.5px;color:var(--muted)}
+.stat .val.good{color:var(--good)} .stat .val.pink{color:var(--pink)}
+/* tinted blocks */
+.block{border-radius:var(--r-lg);padding:22px 24px;margin-bottom:18px;border:1px solid var(--line);background:var(--surface)}
+.block.yellow{background:var(--tint-yellow)} .block.pinkish{background:var(--pink-soft)} .block.green{background:var(--tint-green)} .block.blue{background:var(--tint-blue)}
+.block-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:14px}
+.numdot{flex:0 0 34px;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
+.numdot.p{background:var(--pink)} .numdot.g{background:var(--good)} .numdot.b{background:#5a82dc} .numdot.y{background:var(--warn)}
+.block-head h2{font-size:19px;font-weight:800;letter-spacing:-.01em}
+.block-head p{font-size:13.5px;color:var(--muted);margin-top:2px}
+/* toggles */
+.row{display:flex;align-items:center;justify-content:space-between;gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 18px;margin-bottom:10px}
+.row .rt{font-weight:700}
+.row .rd{font-size:13px;color:var(--muted);margin-top:2px}
+.switch{flex:0 0 46px;width:46px;height:27px;border-radius:var(--r-pill);background:var(--line);border:0;cursor:pointer;position:relative;transition:background .2s}
+.switch::after{content:"";position:absolute;top:3px;left:3px;width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.25);transition:left .2s}
+.switch[aria-checked="true"]{background:var(--pink)}
+.switch[aria-checked="true"]::after{left:22px}
+.switch:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
+/* campaigns */
+.camp{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px 22px;margin-bottom:14px;box-shadow:var(--shadow)}
+.camp-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.camp h3{font-size:17px;font-weight:800}
+.badge{display:inline-block;font-size:12px;font-weight:700;padding:4px 12px;border-radius:var(--r-pill)}
+.badge.live{background:var(--tint-green);color:var(--good)}
+.badge.paused{background:var(--tint-yellow);color:var(--warn)}
+.badge.draft{background:var(--lav-bg);color:var(--lav)}
+.progress{height:9px;border-radius:var(--r-pill);background:var(--line);overflow:hidden;margin:10px 0 8px}
+.progress i{display:block;height:100%;border-radius:var(--r-pill);background:linear-gradient(90deg,var(--pink),#a44fd0)}
+.camp .meta{display:flex;gap:20px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.camp .meta b{color:var(--ink)}
+/* table */
+table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow)}
+.tablewrap{overflow-x:auto;border-radius:var(--r-lg)}
+th,td{text-align:left;padding:12px 16px;font-size:13.5px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;color:var(--muted);font-weight:700;background:var(--surface)}
+tr:last-child td{border-bottom:0}
+tbody tr.call{cursor:pointer}
+tbody tr.call:hover{background:var(--pink-soft)}
+.out{font-size:12px;font-weight:700;padding:4px 11px;border-radius:var(--r-pill);display:inline-block}
+.out.meet{background:var(--tint-green);color:var(--good)}
+.out.int{background:var(--pink-soft);color:var(--pink)}
+.out.cb{background:var(--tint-yellow);color:var(--warn)}
+.out.no{background:rgba(216,79,94,.12);color:var(--bad)}
+.out.na{background:var(--lav-bg);color:var(--lav)}
+.out.miss{background:var(--line);color:var(--muted)}
+.transcript td{white-space:normal;background:var(--bg)}
+.tr-box{padding:6px 4px 10px}
+.msg{max-width:62ch;border-radius:16px;padding:10px 14px;margin:7px 0;font-size:13.5px}
+.msg.bot{background:var(--pink-soft)}
+.msg.client{background:var(--surface);border:1px solid var(--line);margin-left:auto}
+.msg .who{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:2px}
+/* funnel */
+.funnel .frow{display:grid;grid-template-columns:180px 1fr 90px;align-items:center;gap:14px;margin-bottom:12px;font-size:13.5px}
+.funnel .fbar{height:26px;border-radius:9px;background:linear-gradient(90deg,var(--pink),#a44fd0);min-width:8px}
+.funnel .fnum{font-weight:800;text-align:right}
+.goal{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:20px 22px;margin:18px 0}
+.goal .g-top{display:flex;justify-content:space-between;font-weight:700;margin-bottom:8px}
+.goal .g-bar{height:12px;border-radius:var(--r-pill);background:var(--line);position:relative;overflow:visible}
+.goal .g-fill{height:100%;width:0;border-radius:var(--r-pill);background:linear-gradient(90deg,var(--pink),#a44fd0);transition:width 1s ease}
+.goal .g-target{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--ink);left:35%}
+.goal .g-note{font-size:12.5px;color:var(--muted);margin-top:8px}
+/* misc */
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:var(--r-pill);padding:7px 15px;font-size:13px;font-weight:700;cursor:pointer;color:var(--muted)}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;font:inherit;font-size:14px;padding:11px 14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);color:var(--ink)}
+.field textarea{min-height:120px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.ok-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--good);margin-right:7px}
+#toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);padding:12px 22px;border-radius:var(--r-pill);font-weight:700;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:50}
+#toast.show{opacity:1;transform:translateX(-50%)}
+@media (max-width:1080px){.cols{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:820px){
+  .app{grid-template-columns:1fr}
+  aside{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center}
+  .userchip{margin-top:0;border-top:0;margin-left:auto}
+  .nav{flex-direction:row;flex-wrap:wrap}
+  .navlabel{display:none}
+  .topbar{flex-wrap:wrap}
+  .page{padding:20px 16px 40px}
+  .funnel .frow{grid-template-columns:120px 1fr 70px}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside>
+  <div class="logo"><span class="dd">▶▶</span> Deepdub</div>
+  <div class="crumb">Рабочее пространство / <b>Ассистент K</b> · live</div>
+
+  <div class="navlabel">РАБОТА</div>
+  <nav class="nav" aria-label="Основная навигация">
+    <button class="active" data-page="overview"><span class="ic">▦</span>Обзор</button>
+    <button data-page="outbound"><span class="ic">☎</span>Обзвон</button>
+    <button data-page="logs"><span class="ic">≣</span>Журнал звонков</button>
+    <button data-page="analytics"><span class="ic">◔</span>Аналитика</button>
+  </nav>
+  <div class="navlabel">НАСТРОЙКА</div>
+  <nav class="nav">
+    <button data-page="script"><span class="ic">✎</span>Скрипт и голос</button>
+    <button data-page="languages"><span class="ic">Ⓐ</span>Языки</button>
+    <button data-page="telephony"><span class="ic">⇄</span>Телефония</button>
+  </nav>
+
+  <div class="userchip">
+    <div class="avatar">S</div>
+    <div><div class="un">Serik M.</div><div class="ur">Forward Deployed Engineer</div></div>
+  </div>
+</aside>
+
+<main>
+<div class="topbar">
+  <div><h1 id="pt">Обзор</h1><div class="sub" id="ps">Ассистент K · live · обзвон идёт</div></div>
+  <div class="actions">
+    <button class="btn" id="testcall">Тестовый звонок</button>
+    <button class="btn">A/B</button>
+    <button class="btn primary" id="publish">Опубликовать</button>
+  </div>
+</div>
+
+<!-- ================= ОБЗОР ================= -->
+<section class="page visible" id="overview" data-title="Обзор" data-sub="Ассистент K · live · обзвон идёт">
+<div class="cols">
+<div>
+  <div class="eyebrow"><span class="dot"></span>Ассистент K — в работе, волна 1</div>
+  <div class="hero">Дозванивается.<br><span class="grad">Договаривается.</span></div>
+  <p class="lede">Ассистент K обзванивает базу компании, представляется, делает предложение и передаёт тёплых клиентов менеджеру. Каждый разговор — в журнале, каждый исход — в CRM.</p>
+
+  <div class="stats">
+    <div class="stat"><div class="lab">Звонков сегодня</div><div class="val">142</div><div class="note">волна 1 · с 10:00</div></div>
+    <div class="stat"><div class="lab">Дозвон</div><div class="val">61%</div><div class="note">87 разговоров</div></div>
+    <div class="stat"><div class="lab">Интерес</div><div class="val pink">24</div><div class="note">32% от разговоров</div></div>
+    <div class="stat"><div class="lab">Встречи</div><div class="val good">11</div><div class="note">переданы менеджерам</div></div>
+  </div>
+
+  <div class="goal">
+    <div class="g-top"><span>Цель: 35% разговоров → интерес</span><span>сейчас 32%</span></div>
+    <div class="g-bar"><div class="g-fill" id="goalfill" style="width:0"></div><div class="g-target" style="left:87.5%" title="Цель 35%"></div></div>
+    <div class="g-note">До цели 3 п.п. — в A/B тесте скрипт «Вопрос-открытие» уже даёт 35%. Победитель определится к пятнице.</div>
+  </div>
+</div>
+
+<div class="rail">
+  <div class="railcard">
+    <h3>Прямо сейчас</h3>
+    <div class="kv"><span>В линии</span><b>4 звонка</b></div>
+    <div class="kv"><span>Следующая партия</span><b>16:00</b></div>
+    <div class="kv"><span>Окно обзвона</span><b>10:00–19:00 Алматы</b></div>
+    <div class="kv"><span>Номер</span><b>+7 727 339-40-21</b></div>
+  </div>
+  <div class="railcard">
+    <h3>Ассистент K в цифрах</h3>
+    <div class="kv"><span>Средний разговор</span><b>2 мин 18 с</b></div>
+    <div class="kv"><span>Перебиваний / звонок</span><b>1,4</b></div>
+    <div class="kv"><span>Передач менеджеру</span><b>9 сегодня</b></div>
+    <div class="kv"><span>Жалоб «не звоните»</span><b>2 → в блок-лист</b></div>
+    <div class="kv"><span>Казахский сегмент</span><b>14 звонков · 3 встречи</b></div>
+  </div>
+</div>
+</div>
+</section>
+
+<!-- ================= ОБЗВОН ================= -->
+<section class="page" id="outbound" data-title="Обзвон" data-sub="Кампании, база, расписание и ретраи.">
+<div class="cols">
+<div>
+  <div class="camp">
+    <div class="camp-top"><h3>База K — сентябрь, волна 1</h3><span class="badge live">Идёт</span></div>
+    <div class="progress"><i style="width:40.5%"></i></div>
+    <div class="meta"><span>Обработано <b>486 / 1 200</b></span><span>Дозвон <b>58%</b></span><span>Интерес <b>74</b></span><span>Встречи <b>41</b></span><span>Завершение ≈ <b>26 сен</b></span></div>
+  </div>
+  <div class="camp">
+    <div class="camp-top"><h3>Недозвоны — повторная волна</h3><span class="badge paused">Пауза до 16:00</span></div>
+    <div class="progress"><i style="width:22%;opacity:.55"></i></div>
+    <div class="meta"><span>В очереди <b>131</b></span><span>Попытка <b>2 из 3</b></span><span>Интервал <b>4 часа</b></span></div>
+  </div>
+  <div class="camp">
+    <div class="camp-top"><h3>WhatsApp-дожим после интереса</h3><span class="badge draft">Черновик · фаза 2</span></div>
+    <div class="meta"><span>Канал <b>WhatsApp</b></span><span>Триггер <b>исход «Интерес»</b></span><span>Старт <b>после согласования с K</b></span></div>
+  </div>
+
+  <div class="block yellow">
+    <div class="block-head"><div class="numdot y">1</div><div><h2>База контактов</h2><p>CSV с полями: имя, телефон, продукт, менеджер. Персонализация подставляется в скрипт автоматически.</p></div></div>
+    <div class="row"><div><div class="rt">база_K_сентябрь.csv</div><div class="rd">1 200 строк · загружено 12 сен · дубли и невалидные номера вычищены (–38)</div></div><button class="btn">Заменить файл</button></div>
+  </div>
+
+  <div class="block pinkish">
+    <div class="block-head"><div class="numdot p">2</div><div><h2>Расписание и ретраи</h2><p>Когда звоним и что делаем с недозвонами.</p></div></div>
+    <div class="grid2">
+      <div class="field"><label>Окно обзвона</label><input value="10:00 – 19:00, будни" readonly></div>
+      <div class="field"><label>Часовой пояс</label><input value="Алматы (UTC+5)" readonly></div>
+      <div class="field"><label>Попыток на контакт</label><input value="3" readonly></div>
+      <div class="field"><label>Интервал между попытками</label><input value="4 часа" readonly></div>
+    </div>
+    <div class="row"><div><div class="rt">Детект автоответчика</div><div class="rd">Голосовую почту не считаем дозвоном, попытка сохраняется</div></div><button class="switch" role="switch" aria-checked="true" aria-label="Детект автоответчика"></button></div>
+    <div class="row"><div><div class="rt">Блок-лист «не звоните мне»</div><div class="rd">Просьба не звонить фиксируется в разговоре и навсегда исключает номер</div></div><button class="switch" role="switch" aria-checked="true" aria-label="Блок-лист"></button></div>
+  </div>
+
+  <div class="block green">
+    <div class="block-head"><div class="numdot g">3</div><div><h2>Темп и параллельность</h2><p>Бережём номер от антиспам-маркировки операторов.</p></div></div>
+    <div class="grid2">
+      <div class="field"><label>Параллельных звонков</label><input value="5" readonly></div>
+      <div class="field"><label>Максимум в час</label><input value="60" readonly></div>
+    </div>
+  </div>
+</div>
+
+<div class="rail">
+  <div class="railcard"><h3>Что это значит</h3><p>Кампания сама ведёт базу: набирает в рабочее окно, повторяет недозвоны трижды с интервалом 4 часа и никогда не звонит тем, кто попросил не звонить.</p></div>
+  <div class="railcard"><h3>Воронка волны 1</h3>
+    <div class="kv"><span>Набрано</span><b>486</b></div>
+    <div class="kv"><span>Дозвон</span><b>282</b></div>
+    <div class="kv"><span>Разговор &gt; 30 c</span><b>231</b></div>
+    <div class="kv"><span>Интерес</span><b>74</b></div>
+    <div class="kv"><span>Встречи</span><b>41</b></div>
+  </div>
+</div>
+</div>
+</section>
+
+<!-- ================= ЖУРНАЛ ================= -->
+<section class="page" id="logs" data-title="Журнал звонков" data-sub="Сегодня, 15 сентября · нажмите на строку с точкой — откроется транскрипт.">
+<div class="chips">
+  <button class="chip on">Все · 142</button><button class="chip">Интерес · 24</button><button class="chip">Встречи · 11</button><button class="chip">Перезвонить · 17</button><button class="chip">Отказы · 21</button><button class="chip">Недозвон · 55</button><button class="chip">Казахский · 14</button>
+</div>
+<div class="tablewrap">
+<table>
+<thead><tr><th>Время</th><th>Контакт</th><th>Номер</th><th>Язык</th><th>Длит.</th><th>Исход</th><th>Настроение</th></tr></thead>
+<tbody>
+<tr class="call" data-tr="tr1"><td>14:32</td><td>Айгерим С.</td><td>+7 705 ••• 12-40</td><td>RU</td><td>2:41</td><td><span class="out meet">Встреча назначена</span></td><td>Позитивное</td></tr>
+<tr class="transcript" id="tr1" hidden><td colspan="7"><div class="tr-box">
+  <div class="msg bot"><div class="who">Ассистент K</div>Здравствуйте! Разговор записывается, с вами говорит голосовой ассистент компании K. Айгерим, звоню по вашему сервисному пакету — с первого октября для действующих клиентов открыли новые условия. Удобно две минуты?</div>
+  <div class="msg client"><div class="who">Клиент</div>Ну давайте, только быстро.</div>
+  <div class="msg bot"><div class="who">Ассистент K</div>Коротко: по вашему пакету доступен апгрейд без доплаты в первые три месяца. Чтобы менеджер посчитал точно под вас — предлагаю созвон на 15 минут. Завтра в 11:00 или в 15:00?</div>
+  <div class="msg client"><div class="who">Клиент</div>Давайте завтра в 11.</div>
+  <div class="msg bot"><div class="who">Ассистент K</div>Записала: завтра, 16 сентября, 11:00 — менеджер Дамир позвонит с этого же номера. Подтверждение отправлю в WhatsApp. Хорошего дня!</div>
+</div></td></tr>
+
+<tr class="call" data-tr="tr2"><td>14:21</td><td>Ержан Т.</td><td>+7 701 ••• 88-03</td><td>RU+KK</td><td>3:05</td><td><span class="out int">Интерес</span></td><td>Нейтральное</td></tr>
+<tr class="transcript" id="tr2" hidden><td colspan="7"><div class="tr-box">
+  <div class="msg bot"><div class="who">Ассистент K</div>Ержан, добрый день! Ассистент компании K, разговор записывается. По вашему договору есть предложение — рассказать за минуту?</div>
+  <div class="msg client"><div class="who">Клиент</div>Қазір айтыңыз, только я за рулём, долго не могу.</div>
+  <div class="msg bot"><div class="who">Ассистент K</div>Түсіндім, қысқаша айтамын. Суть такая: расширенный пакет по текущей цене до конца года. Могу прислать детали в WhatsApp, а менеджер наберёт, когда удобно — вечером после 18:00 подойдёт?</div>
+  <div class="msg client"><div class="who">Клиент</div>Жарайды, присылайте, вечером гляну.</div>
+  <div class="msg bot"><div class="who">Ассистент K</div>Отправляю в WhatsApp, менеджер позвонит после 18:00. Жолыңыз болсын!</div>
+</div></td></tr>
+
+<tr class="call" data-tr="tr3"><td>14:10</td><td>Гульнара А.</td><td>+7 705 ••• 20-96</td><td>KK</td><td>2:58</td><td><span class="out meet">Встреча назначена</span></td><td>Позитивное</td></tr>
+<tr class="transcript" id="tr3" hidden><td colspan="7"><div class="tr-box">
+  <div class="msg bot"><div class="who">Ассистент K</div>Сәлеметсіз бе, Гүлнара! Әңгіме жазылып отыр, сізбен K компаниясының дауыстық көмекшісі сөйлесіп тұр. Сіздің қызмет пакетіңіз бойынша қазанның бірінен бастап жаңа шарттар қолжетімді болады. Екі минут уақытыңыз бар ма?</div>
+  <div class="msg client"><div class="who">Клиент</div>Иә, айтыңыз, тыңдап тұрмын.</div>
+  <div class="msg bot"><div class="who">Ассистент K</div>Қысқаша: қолданыстағы клиенттерге пакетті алғашқы үш ай қосымша ақысыз кеңейтуге болады. Сізге нақты есептеп беру үшін менеджермен 15 минуттық қоңырау ұсынамын. Ертең сағат 11:00-де ыңғайлы ма, әлде 15:00-де ме?</div>
+  <div class="msg client"><div class="who">Клиент</div>Маған қазақша сөйлейтін менеджер болса жақсы болар еді.</div>
+  <div class="msg bot"><div class="who">Ассистент K</div>Әрине! Ертең сағат 11:00-де қазақша сөйлейтін менеджер Айдос осы нөмірден хабарласады. Растауды WhatsApp-қа жіберемін. Күніңіз сәтті өтсін!</div>
+  <div class="msg client"><div class="who">Клиент</div>Рақмет, сау болыңыз!</div>
+</div></td></tr>
+
+<tr class="call" data-tr="tr4"><td>13:58</td><td>Динара Ж.</td><td>+7 777 ••• 45-19</td><td>RU</td><td>0:52</td><td><span class="out no">Отказ</span></td><td>Негативное</td></tr>
+<tr class="transcript" id="tr4" hidden><td colspan="7"><div class="tr-box">
+  <div class="msg bot"><div class="who">Ассистент K</div>Здравствуйте, Динара! Разговор записывается, вас беспокоит голосовой ассистент компании K — по вашему тарифу появилось предложение…</div>
+  <div class="msg client"><div class="who">Клиент</div>Не надо мне ничего предлагать, и вообще не звоните мне больше с рекламой.</div>
+  <div class="msg bot"><div class="who">Ассистент K</div>Поняла вас, прошу прощения за беспокойство. Добавляю ваш номер в список «не звонить» — рекламных звонков от нас больше не будет. Всего доброго!</div>
+</div></td></tr>
+
+<tr class="call"><td>13:47</td><td>Талгат Б.</td><td>+7 708 ••• 30-77</td><td>—</td><td>—</td><td><span class="out miss">Недозвон · попытка 3 в 16:00</span></td><td>—</td></tr>
+<tr class="call"><td>13:44</td><td>Асель К.</td><td>+7 747 ••• 91-11</td><td>RU</td><td>1:37</td><td><span class="out cb">Перезвонить завтра 11:00</span></td><td>Позитивное</td></tr>
+<tr class="call"><td>13:31</td><td>Марат О.</td><td>+7 702 ••• 64-52</td><td>—</td><td>0:18</td><td><span class="out miss">Автоответчик</span></td><td>—</td></tr>
+<tr class="call"><td>13:19</td><td>Нурлан Д.</td><td>+7 778 ••• 14-08</td><td>KK</td><td>4:12</td><td><span class="out na">Передан менеджеру Айдосу</span></td><td>Позитивное</td></tr>
+<tr class="call"><td>13:02</td><td>Бауыржан Н.</td><td>+7 776 ••• 57-30</td><td>RU+KK</td><td>2:04</td><td><span class="out int">Интерес</span></td><td>Нейтральное</td></tr>
+<tr class="call"><td>12:48</td><td>Сабина Е.</td><td>+7 700 ••• 73-25</td><td>RU</td><td>1:12</td><td><span class="out cb">Перезвонить в четверг</span></td><td>Нейтральное</td></tr>
+<tr class="call"><td>12:35</td><td>Виктор Л.</td><td>+7 705 ••• 09-84</td><td>RU</td><td>2:56</td><td><span class="out int">Интерес</span></td><td>Позитивное</td></tr>
+<tr class="call"><td>12:20</td><td>Айдана М.</td><td>+7 747 ••• 66-41</td><td>—</td><td>—</td><td><span class="out miss">Недозвон · попытка 2 в 16:20</span></td><td>—</td></tr>
+</tbody>
+</table>
+</div>
+<p style="font-size:12.5px;color:var(--muted);margin-top:12px">Показаны 1–12 из 142 за сегодня, 15 сентября · записи и транскрипты хранятся 90 дней · исходы синхронизированы с Битрикс24</p>
+
+</section>
+
+<!-- ================= АНАЛИТИКА ================= -->
+<section class="page" id="analytics" data-title="Аналитика" data-sub="Воронка волны 1 и результаты A/B — путь к цели 35%.">
+<div class="cols">
+<div>
+  <div class="block funnel">
+    <div class="block-head"><div class="numdot p">1</div><div><h2>Воронка волны 1</h2><p>486 обработанных контактов · 12–15 сентября</p></div></div>
+    <div class="frow"><span>Набрано</span><div class="fbar" style="width:100%"></div><span class="fnum">486</span></div>
+    <div class="frow"><span>Дозвон</span><div class="fbar" style="width:58%"></div><span class="fnum">282</span></div>
+    <div class="frow"><span>Разговор &gt; 30 c</span><div class="fbar" style="width:47.5%"></div><span class="fnum">231</span></div>
+    <div class="frow"><span>Интерес</span><div class="fbar" style="width:15.2%"></div><span class="fnum">74</span></div>
+    <div class="frow"><span>Встреча</span><div class="fbar" style="width:8.4%"></div><span class="fnum">41</span></div>
+  </div>
+
+  <div class="block blue">
+    <div class="block-head"><div class="numdot b">2</div><div><h2>A/B: скрипт открытия</h2><p>Сплит 50/50 по разговорам &gt; 30 секунд, метрика — доля исхода «Интерес».</p></div></div>
+    <div class="row"><div><div class="rt">A · «Прямое предложение»</div><div class="rd">118 разговоров · интерес 34 · <b>28,8%</b></div></div><span class="badge paused">Уступает</span></div>
+    <div class="row"><div><div class="rt">B · «Вопрос-открытие»</div><div class="rd">113 разговоров · интерес 40 · <b>35,4%</b></div></div><span class="badge live">Лидирует</span></div>
+  </div>
+
+  <div class="block green">
+    <div class="block-head"><div class="numdot g">3</div><div><h2>Tuner · разбор недели</h2><p>ИИ-анализ 100 последних транскриптов, фильтр «неразрешённые».</p></div></div>
+    <div class="row"><div><div class="rt">Возражение «дорого» теряет 40% интереса</div><div class="rd">Рекомендация: добавить ветку сравнения с текущим тарифом — правка применена 14 сен</div></div><span class="badge live">Внедрено</span></div>
+    <div class="row"><div><div class="rt">Числа в казахской речи распознаются хуже</div><div class="rd">Добавлено 22 записи в STT-словарь · наблюдаем</div></div><span class="badge paused">Мониторинг</span></div>
+  </div>
+</div>
+<div class="rail">
+  <div class="railcard"><h3>Экспорт в CRM</h3><p>После каждого звонка исход, транскрипт и договорённость уходят вебхуком в Битрикс24 компании K (сделка → стадия по исходу). Синхронизировано сегодня: 142 записи, ошибок 0.</p></div>
+  <div class="railcard"><h3>Определение конверсии</h3><p>Зафиксировано с K письменно: конверсия = доля разговоров &gt; 30 секунд с исходом «Интерес» или «Встреча». Цель — 35% к концу пилота.</p></div>
+</div>
+</div>
+</section>
+
+<!-- ================= СКРИПТ ================= -->
+<section class="page" id="script" data-title="Скрипт и голос" data-sub="Что ассистент говорит, чьим голосом и как представляется.">
+<div class="cols">
+<div>
+  <div class="block pinkish">
+    <div class="block-head"><div class="numdot p">1</div><div><h2>Сценарий разговора</h2><p>Версия 8 · RU + KK · победитель A/B подставится автоматически</p></div></div>
+    <div class="field"><label>Открытие (вариант B — «Вопрос-открытие»)</label>
+    <textarea readonly>Здравствуйте, {имя}! Разговор записывается, с вами говорит голосовой ассистент компании K. Звоню по вашему {продукт} — подскажите, вы сейчас довольны текущими условиями? …</textarea></div>
+    <div class="field"><label>Открытие · казахская версия (сегмент KK)</label>
+    <textarea readonly style="min-height:96px">Сәлеметсіз бе, {имя}! Әңгіме жазылып отыр, сізбен K компаниясының дауыстық көмекшісі сөйлесіп тұр. Сіздің {продукт} бойынша хабарласып тұрмын — қазіргі шарттарға көңіліңіз тола ма? …</textarea></div>
+    <div class="field"><label>Передача менеджеру</label>
+    <textarea readonly style="min-height:70px">Отлично, соединяю вас с менеджером {менеджер} — он на линии, одну секунду.</textarea></div>
+  </div>
+  <div class="block yellow">
+    <div class="block-head"><div class="numdot y">2</div><div><h2>Голос</h2></div></div>
+    <div class="row"><div><div class="rt">Алия · женский · русский</div><div class="rd">Тёплый деловой тон · эмоции: «предложение» — воодушевление, «возражение» — спокойствие</div></div><button class="btn">Прослушать</button></div>
+  </div>
+  <div class="block green">
+    <div class="block-head"><div class="numdot g">3</div><div><h2>Дисклеймер</h2><p>Читается в начале каждого звонка. Формулировка согласована с юристами K.</p></div></div>
+    <div class="row"><div><div class="rt">«Разговор записывается, с вами говорит голосовой ассистент компании K»</div><div class="rd">Каналы: телефон · скажите «менеджер» — переведёт на человека</div></div><button class="switch" role="switch" aria-checked="true" aria-label="Дисклеймер"></button></div>
+  </div>
+</div>
+<div class="rail">
+  <div class="railcard"><h3>Словарь произношения</h3><p>64 записи: имена клиентов, адреса, продукты K. Обновляется с каждой загрузкой базы.</p></div>
+  <div class="railcard"><h3>Память между звонками</h3><p>Включена по номеру телефона: при повторной попытке ассистент помнит прошлый разговор и договорённости.</p></div>
+</div>
+</div>
+</section>
+
+<!-- ================= ЯЗЫКИ ================= -->
+<section class="page" id="languages" data-title="Языки" data-sub="Что ассистент понимает и на чём говорит.">
+<div class="cols">
+<div>
+  <div class="block green">
+    <div class="block-head"><div class="numdot g">1</div><div><h2>Языки ассистента</h2></div></div>
+    <div class="row"><div><div class="rt">Русский</div><div class="rd">Основной · связка распознавание + речь протестирована на телефонном звуке</div></div><button class="switch" role="switch" aria-checked="true" aria-label="Русский"></button></div>
+    <div class="row"><div><div class="rt">Казахский</div><div class="rd">Пилот · включён для казахоязычного сегмента (10% базы) · распознавание и речь в проде с 14 сен</div></div><button class="switch" role="switch" aria-checked="true" aria-label="Казахский"></button></div>
+  </div>
+  <div class="block blue">
+    <div class="block-head"><div class="numdot b">2</div><div><h2>Смешанная речь</h2><p>Клиенты в Казахстане переключаются между языками внутри фразы.</p></div></div>
+    <div class="row"><div><div class="rt">Понимать казахские вставки в русской речи</div><div class="rd">«Жарайды», «қанша тұрады» и ещё 40 частых оборотов — в STT-словаре</div></div><button class="switch" role="switch" aria-checked="true" aria-label="Смешанная речь"></button></div>
+    <div class="row"><div><div class="rt">Ответ на языке собеседника</div><div class="rd">Если клиент говорит по-казахски — ассистент переходит на казахский в этом же звонке</div></div><button class="switch" role="switch" aria-checked="true" aria-label="Ответ на языке собеседника"></button></div>
+  </div>
+</div>
+<div class="rail">
+  <div class="railcard"><h3>Что это значит</h3><p>Основной скрипт — русский. Казахоязычный сегмент базы (помечен в CSV) слышит казахскую версию скрипта; по просьбе клиента ассистент переводит на казахоговорящего менеджера Айдоса.</p></div>
+  <div class="railcard"><h3>Качество за неделю</h3>
+    <div class="kv"><span>Точность распознавания RU</span><b>92,6%</b></div>
+    <div class="kv"><span>Точность распознавания KK</span><b>88,8%</b></div>
+    <div class="kv"><span>Записей в STT-словаре</span><b>86</b></div>
+  </div>
+</div>
+</div>
+</section>
+
+<!-- ================= ТЕЛЕФОНИЯ ================= -->
+<section class="page" id="telephony" data-title="Телефония" data-sub="Как ассистент выходит в сеть и каким номером представляется.">
+<div class="cols">
+<div>
+  <div class="block green">
+    <div class="block-head"><div class="numdot g">1</div><div><h2>SIP-транк</h2></div></div>
+    <div class="row"><div><div class="rt"><span class="ok-dot"></span>Beeline Business · Казахстан</div><div class="rd">Asterisk → Deepdub · подключён 11 сен · задержка 84 мс · аптайм 99,9%</div></div><span class="badge live">Активен</span></div>
+    <div class="grid2">
+      <div class="field"><label>Исходящий номер (CallerID)</label><input value="+7 727 339-40-21" readonly></div>
+      <div class="field"><label>Номер менеджеров (transfer)</label><input value="+7 727 339-40-22" readonly></div>
+    </div>
+  </div>
+  <div class="block yellow">
+    <div class="block-head"><div class="numdot y">2</div><div><h2>Гигиена номера</h2><p>Чтобы операторские антиспам-фильтры не пометили номер.</p></div></div>
+    <div class="row"><div><div class="rt">Лимит 60 звонков в час</div><div class="rd">Партии по 200 контактов вместо сплошного прозвона</div></div><button class="switch" role="switch" aria-checked="true" aria-label="Лимит звонков"></button></div>
+    <div class="row"><div><div class="rt">Ротация на второй номер при жалобах</div><div class="rd">Резервный номер зарегистрирован, включится автоматически</div></div><button class="switch" role="switch" aria-checked="true" aria-label="Ротация номера"></button></div>
+  </div>
+  <div class="block blue">
+    <div class="block-head"><div class="numdot b">3</div><div><h2>Запасные каналы</h2></div></div>
+    <div class="row"><div><div class="rt">Web-звонок по публичной ссылке</div><div class="rd">bot.deepdub.ai/b/assistant-k — для демо и виджета на сайте K</div></div><span class="badge live">Открыт</span></div>
+    <div class="row"><div><div class="rt">WhatsApp</div><div class="rd">Sender зарегистрирован · включим в фазе 2 для дожима</div></div><span class="badge draft">Готов к запуску</span></div>
+  </div>
+</div>
+<div class="rail">
+  <div class="railcard"><h3>Схема</h3><p>База K → кампания → pre-call хук подтягивает данные клиента → SIP-транк Beeline → звонок с местного номера → исход вебхуком в CRM.</p></div>
+</div>
+</div>
+</section>
+
+</main>
+</div>
+<div id="toast" role="status"></div>
+
+<script>
+(function(){
+  var navBtns=document.querySelectorAll('.nav button');
+  var pages=document.querySelectorAll('.page');
+  var pt=document.getElementById('pt'), ps=document.getElementById('ps');
+  navBtns.forEach(function(b){
+    b.addEventListener('click',function(){
+      navBtns.forEach(function(x){x.classList.remove('active')});
+      b.classList.add('active');
+      pages.forEach(function(p){p.classList.remove('visible')});
+      var pg=document.getElementById(b.dataset.page);
+      pg.classList.add('visible');
+      pt.textContent=pg.dataset.title; ps.textContent=pg.dataset.sub;
+      window.scrollTo({top:0});
+      if(b.dataset.page==='overview'){animGoal();}
+    });
+  });
+  // toggles
+  document.querySelectorAll('.switch').forEach(function(s){
+    s.addEventListener('click',function(){
+      s.setAttribute('aria-checked', s.getAttribute('aria-checked')==='true'?'false':'true');
+    });
+  });
+  // transcripts
+  document.querySelectorAll('tr.call[data-tr]').forEach(function(r){
+    r.addEventListener('click',function(){
+      var t=document.getElementById(r.dataset.tr);
+      t.hidden=!t.hidden;
+    });
+  });
+  // toast
+  var toast=document.getElementById('toast'); var tm;
+  function say(msg){toast.textContent=msg;toast.classList.add('show');clearTimeout(tm);tm=setTimeout(function(){toast.classList.remove('show')},2600);}
+  document.getElementById('publish').addEventListener('click',function(){say('Опубликовано — версия 9 сохранена в истории');});
+  document.getElementById('testcall').addEventListener('click',function(){say('Тестовый звонок запущен — наберём вас с +7 727 339-40-21');});
+  // goal bar animation
+  function animGoal(){var g=document.getElementById('goalfill');g.style.width='0';requestAnimationFrame(function(){setTimeout(function(){g.style.width='80%'},60);});}
+  animGoal();
+  // chips (visual only)
+  document.querySelectorAll('.chip').forEach(function(c){c.addEventListener('click',function(){document.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on')});c.classList.add('on');});});
+})();
+</script>
+</body>
+</html>
